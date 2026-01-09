@@ -23,7 +23,9 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     try {
-      const user = await this.userModel.findOne({ email: loginDto.email }).exec();
+      const user = await this.userModel
+        .findOne({ email: loginDto.email })
+        .exec();
 
       if (!user) {
         return ApiResponse.error(
@@ -31,19 +33,24 @@ export class AuthService {
         );
       }
 
-      const matchPassword = await bcrypt.compare(loginDto.password, user.password);
+      const matchPassword = await bcrypt.compare(
+        loginDto.password,
+        user.password,
+      );
 
       if (!matchPassword) {
         return ApiResponse.error('Votre mot de passe est incorrect');
       }
 
-      if (!user.confirmed) {
-        return ApiResponse.error(
-          'Veuillez vérifier votre boîte e-mail pour confirmer votre compte ou contacter le support.',
-        );
-      }
+      // On ne bloque plus la connexion si !user.confirmed
+      // On renvoie juste l'info dans la réponse
 
-      const payload = { email: user.email, sub: user._id };
+      const payload = {
+        email: user.email,
+        sub: user._id,
+        role: user.role, // ← très important !
+      };
+
       const token = this.jwtService.sign(payload);
 
       const userResponse = {
@@ -51,9 +58,14 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        role: user.role, // ← on renvoie le rôle au frontend
+        confirmed: user.confirmed, // ← on renvoie aussi l'état de confirmation
       };
 
-      return ApiResponse.success('Connexion réussie', { token, user: userResponse });
+      return ApiResponse.success('Connexion réussie', {
+        token,
+        user: userResponse,
+      });
     } catch (error: any) {
       return ApiResponse.error('Une erreur est survenue lors de la connexion');
     }
@@ -61,10 +73,14 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     try {
-      const user = await this.userModel.findOne({ email: registerDto.email }).exec();
+      const user = await this.userModel
+        .findOne({ email: registerDto.email })
+        .exec();
 
       if (user) {
-        return ApiResponse.error('Cet email est déjà utilisé, veuillez vous connecter');
+        return ApiResponse.error(
+          'Cet email est déjà utilisé, veuillez vous connecter',
+        );
       }
 
       if (!this.sharedService.isStrongPassword(registerDto.password)) {
@@ -85,9 +101,13 @@ export class AuthService {
 
       const savedUser = await newUser.save();
 
-      const tokenConfirmedEmail = this.sharedService.tokenConfirmedEmail(savedUser);
+      const tokenConfirmedEmail =
+        this.sharedService.tokenConfirmedEmail(savedUser);
 
-      await this.sendEmailService.confirmedEmail(registerDto.email, tokenConfirmedEmail);
+      await this.sendEmailService.confirmedEmail(
+        registerDto.email,
+        tokenConfirmedEmail,
+      );
 
       return ApiResponse.success(
         'Inscription réussie, vérifiez votre email pour confirmer votre compte',
@@ -115,9 +135,13 @@ export class AuthService {
         return ApiResponse.error('Ce lien de confirmation est invalide');
       }
 
-      return ApiResponse.success('Email confirmé, vous pouvez maintenant vous connecter');
+      return ApiResponse.success(
+        'Email confirmé, vous pouvez maintenant vous connecter',
+      );
     } catch (error: any) {
-      return ApiResponse.error('Une erreur est survenue lors de la confirmation');
+      return ApiResponse.error(
+        'Une erreur est survenue lors de la confirmation',
+      );
     }
   }
 }
