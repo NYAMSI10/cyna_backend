@@ -151,4 +151,8 @@ export class AuthService {
       );
     }
   }
+  async forgotPassword(email){
+    //console.log(email);
+    console.log("Bonjour");
+  }
 }
