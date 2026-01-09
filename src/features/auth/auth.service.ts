@@ -113,7 +113,8 @@ export class AuthService {
         'Inscription réussie, vérifiez votre email pour confirmer votre compte',
       );
     } catch (error: any) {
-      return ApiResponse.error("Une erreur est survenue lors de l'inscription");
+      console.error('Erreur login:', error); // ← Ajoute ça
+      return ApiResponse.error('Une erreur est survenue lors de la connexion');
     }
   }
 

@@ -15,7 +15,7 @@ async function bootstrap() {
     .setTitle('CYNA API')
     .setDescription('The CYNA API description')
     .setVersion('1.0')
-    .setBasePath('api')
+    .addServer('/api')
     .addBearerAuth()
     .build();
 
