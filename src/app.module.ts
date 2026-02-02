@@ -4,9 +4,9 @@ import { config } from 'dotenv';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UsersModule } from './features/users/users.module';
 import { AuthModule } from './features/auth/auth.module';
-import { CategoriesModule } from './categories/categories.module';
-import { ServicesModule } from './services/services.module';
-import { ProductsModule } from './products/products.module';
+import { CategoriesModule } from './features/categories/categories.module';
+import { ServicesModule } from './features/services/services.module';
+import { ProductsModule } from './features/products/products.module';
 
 config();
 @Module({

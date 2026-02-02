@@ -1,9 +1,13 @@
-import { Controller, Post, Body, Query, Get } from '@nestjs/common';
+import { Controller, Post, Body, Query, Get, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { CurrentUser } from 'src/shared/decorators/current-user.decorators';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { User } from '../users/entities/user.entity';
 
 @ApiTags('Auth')
+@ApiBearerAuth()
 @Controller('auth/')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -19,5 +23,10 @@ export class AuthController {
   @Get('email-confirmation')
   emailConfirmation(@Query('token') token: string) {
     return this.authService.emailConfirmation(token);
+  }
+  @UseGuards(AuthGuard)
+  @Get('user/me')
+  getProfileUser(@CurrentUser() currentUser: User) {
+    return currentUser;
   }
 }
