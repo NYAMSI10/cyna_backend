@@ -8,6 +8,7 @@ import { CategoriesModule } from './features/categories/categories.module';
 import { ServicesModule } from './features/services/services.module';
 import { ProductsModule } from './features/products/products.module';
 import { SlidersModule } from './features/sliders/sliders.module';
+import { SearchModule } from './features/search/search.module';
 
 config();
 @Module({
@@ -19,6 +20,7 @@ config();
     ServicesModule,
     ProductsModule,
     SlidersModule,
+    SearchModule
   ],
   controllers: [],
   providers: [],
