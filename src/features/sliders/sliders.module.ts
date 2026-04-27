@@ -8,9 +8,10 @@ import { JwtService } from '@nestjs/jwt';
 @Module({
   imports: [
     // Indispensable pour que @InjectModel(Slider.name) fonctionne dans ton Service
-    MongooseModule.forFeature([{ name: Slider.name, schema: SliderSchema }]),UsersModule
+    MongooseModule.forFeature([{ name: Slider.name, schema: SliderSchema }]),
+    UsersModule,
   ],
   controllers: [SlidersController],
-  providers: [SlidersService,JwtService],
+  providers: [SlidersService, JwtService],
 })
 export class SlidersModule {}

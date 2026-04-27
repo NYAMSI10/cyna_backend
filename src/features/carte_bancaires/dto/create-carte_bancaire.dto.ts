@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty } from 'class-validator';
 
 export class CreateCarteBancaireDto {
@@ -17,4 +17,7 @@ export class CreateCarteBancaireDto {
   @ApiProperty()
   @IsNotEmpty({ message: 'CVV de carte est obligatoire' })
   carteCVV: string;
+
+  @ApiPropertyOptional()
+  isDefault?: boolean;
 }

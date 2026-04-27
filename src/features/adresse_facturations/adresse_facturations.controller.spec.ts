@@ -11,7 +11,9 @@ describe('AdresseFacturationsController', () => {
       providers: [AdresseFacturationsService],
     }).compile();
 
-    controller = module.get<AdresseFacturationsController>(AdresseFacturationsController);
+    controller = module.get<AdresseFacturationsController>(
+      AdresseFacturationsController,
+    );
   });
 
   it('should be defined', () => {

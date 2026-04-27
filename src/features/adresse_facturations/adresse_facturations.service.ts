@@ -28,6 +28,13 @@ export class AdresseFacturationsService {
         return ApiResponse.error('Cette adresse de facturation existe deja');
       }
 
+      if (createAdresseFacturationDto.isDefault) {
+        await this.adresseModel.updateMany(
+          { user: currentUser?.data?._id },
+          { $set: { isDefault: false } },
+        );
+      }
+
       const createAdresseFacturation = await this.adresseModel.create({
         ...createAdresseFacturationDto,
         user: currentUser?.data?._id,
@@ -101,9 +108,11 @@ export class AdresseFacturationsService {
 
   async findByUser(currentUser: any) {
     try {
-      const adresseFacturations = await this.adresseModel.find({
-        user: currentUser?.data?._id,
-      });
+      const adresseFacturations = await this.adresseModel
+        .find({
+          user: currentUser?.data?._id,
+        })
+        .sort({ isDefault: -1, createdAt: -1 });
       return ApiResponse.success(
         'Adresse de facturation recuperee avec success',
         adresseFacturations,
@@ -169,6 +178,13 @@ export class AdresseFacturationsService {
       if (!isOwner && !isAdmin) {
         return ApiResponse.error(
           "Vous n'êtes pas propriétaire de cette adresse de facturation",
+        );
+      }
+
+      if (updateAdresseFacturationDto.isDefault) {
+        await this.adresseModel.updateMany(
+          { user: currentUser?.data?._id, _id: { $ne: id } },
+          { $set: { isDefault: false } },
         );
       }
 

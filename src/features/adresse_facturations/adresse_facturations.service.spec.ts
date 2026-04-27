@@ -9,7 +9,9 @@ describe('AdresseFacturationsService', () => {
       providers: [AdresseFacturationsService],
     }).compile();
 
-    service = module.get<AdresseFacturationsService>(AdresseFacturationsService);
+    service = module.get<AdresseFacturationsService>(
+      AdresseFacturationsService,
+    );
   });
 
   it('should be defined', () => {

@@ -1,10 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsMongoId,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsMongoId } from 'class-validator';
 
 @ApiSchema({ description: 'Data Transfer Object pour créer un produit' })
 export class CreateProductDto {

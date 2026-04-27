@@ -11,12 +11,12 @@ import { ApiResponse } from 'src/shared/responses/api-response';
 export class ContactService {
   constructor(
     @InjectModel(Contact.name) private contactModel: Model<Contact>,
-  ) { }
+  ) {}
 
   async create(createContactDto: CreateContactDto) {
     const newContact = new this.contactModel(createContactDto);
     const data = await newContact.save();
-    return ApiResponse.success('Contact ajouté');;
+    return ApiResponse.success('Contact ajouté');
   }
 
   async findAll() {
@@ -30,11 +30,10 @@ export class ContactService {
   async findOne(id: string) {
     const contact = await this.contactModel.findById(id).exec();
     if (!contact) {
-      return ApiResponse.success("Aucun contact trouvé");
+      return ApiResponse.success('Aucun contact trouvé');
     }
     return ApiResponse.success('Contact récupéré avec succès', contact);
   }
-
 
   async update(id: string, updateContactDto: UpdateContactDto) {
     const updatedContact = await this.contactModel
@@ -42,9 +41,14 @@ export class ContactService {
       .exec();
 
     if (!updatedContact) {
-      return ApiResponse.success(`Impossible de modifier : Contact ${id} introuvable`);
+      return ApiResponse.success(
+        `Impossible de modifier : Contact ${id} introuvable`,
+      );
     }
-    return ApiResponse.success('Contact mis à jour avec succès', updatedContact);
+    return ApiResponse.success(
+      'Contact mis à jour avec succès',
+      updatedContact,
+    );
   }
 
   async remove(id: string) {

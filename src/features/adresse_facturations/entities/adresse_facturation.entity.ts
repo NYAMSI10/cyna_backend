@@ -23,6 +23,9 @@ export class AdresseFacturation extends Document {
   phone: string;
   @Prop({ type: Types.ObjectId, ref: 'User' })
   user: User;
+
+  @Prop({ default: false })
+  isDefault: boolean;
 }
 
 export const AdresseFacturationSchema =

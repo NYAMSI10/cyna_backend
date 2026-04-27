@@ -17,5 +17,8 @@ export class CarteBancaire extends Document {
   carteCVV!: string;
   @Prop({ type: Types.ObjectId, ref: 'User' })
   user!: User;
+
+  @Prop({ default: false })
+  isDefault: boolean;
 }
 export const CarteBancaireSchema = SchemaFactory.createForClass(CarteBancaire);

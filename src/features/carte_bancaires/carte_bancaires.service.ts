@@ -26,6 +26,12 @@ export class CarteBancairesService {
       if (exist) {
         return ApiResponse.error('Cette carte bancaire existe deja');
       }
+      if (createCarteBancaireDto.isDefault) {
+        await this.carteBancaireModel.updateMany(
+          { user: currentUser?.data?._id },
+          { $set: { isDefault: false } },
+        );
+      }
       const newCarteBancaire = new this.carteBancaireModel({
         ...createCarteBancaireDto,
         user: currentUser?.data?._id,
@@ -45,9 +51,11 @@ export class CarteBancairesService {
 
   async findByUser(currentUser: any) {
     try {
-      const carteBancaire = await this.carteBancaireModel.find({
-        user: currentUser?.data?._id,
-      });
+      const carteBancaire = await this.carteBancaireModel
+        .find({
+          user: currentUser?.data?._id,
+        })
+        .sort({ isDefault: -1, createdAt: -1 });
       return ApiResponse.success(
         'Carte bancaire recuperee avec success',
         carteBancaire,
@@ -113,6 +121,13 @@ export class CarteBancairesService {
       if (!isOwner && !isAdmin) {
         return ApiResponse.error(
           "Vous n'êtes pas propriétaire de cette carte bancaire",
+        );
+      }
+
+      if (updateCarteBancaireDto.isDefault) {
+        await this.carteBancaireModel.updateMany(
+          { user: currentUser?.data?._id, _id: { $ne: id } },
+          { $set: { isDefault: false } },
         );
       }
 
