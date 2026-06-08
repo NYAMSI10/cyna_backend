@@ -13,6 +13,17 @@ import { Product } from '../products/entities/product.entity';
 import { Service } from '../services/entities/service.entity';
 @Injectable()
 export class CategoriesService {
+  private readonly categoryStorageDir = path.resolve(
+    process.cwd(),
+    'storage/categories',
+  );
+  private readonly categoryStorageRelativeDir = path.join(
+    'storage',
+    'categories',
+  );
+  private readonly categoryImageFileNamePattern =
+    /^cat-\d+-\d+\.(?:jpe?g|png|webp)$/i;
+
   constructor(
     @InjectModel(Category.name) private categoryModel: Model<Category>,
     @InjectModel(Product.name) private productModel: Model<Product>,
@@ -20,6 +31,36 @@ export class CategoriesService {
 
     private readonly sharedService: SharedService,
   ) {}
+
+  private resolveCategoryImagePath(imagePath: string): string | null {
+    const normalizedPath = path.normalize(imagePath);
+    const fileName = path.basename(normalizedPath);
+
+    if (
+      path.isAbsolute(normalizedPath) ||
+      path.dirname(normalizedPath) !== this.categoryStorageRelativeDir ||
+      !this.categoryImageFileNamePattern.test(fileName)
+    ) {
+      return null;
+    }
+
+    return path.join(this.categoryStorageDir, fileName);
+  }
+
+  private unlinkCategoryImage(imagePath: string): boolean {
+    const fullPath = this.resolveCategoryImagePath(imagePath);
+
+    if (!fullPath) {
+      return false;
+    }
+
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+
+    return true;
+  }
+
   async create(
     createCategoryDto: CreateCategoryDto,
     files: { newImage?: Express.Multer.File[] },
@@ -74,8 +115,8 @@ export class CategoriesService {
       return ApiResponse.success('Catégorie créée', savedCategory);
     } catch (error) {
       // 4. Nettoyage : Si la BDD échoue mais que le fichier a été écrit
-      if (fullPath && fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
+      if (fullPath) {
+        this.unlinkCategoryImage(fullPath);
       }
 
       return ApiResponse.error('Erreur lors de la création de la catégorie');
@@ -293,9 +334,12 @@ export class CategoriesService {
       // 5. Nettoyage de l'ancienne image
       // On ne supprime l'ancienne QUE si la mise à jour BDD a réussi ET qu'une nouvelle image a été fournie
       if (file && oldImagePath) {
-        const oldFullRootPath = path.join(process.cwd(), oldImagePath);
-        if (fs.existsSync(oldFullRootPath)) {
-          fs.unlinkSync(oldFullRootPath);
+        try {
+          this.unlinkCategoryImage(oldImagePath);
+        } catch (fileError) {
+          return ApiResponse.error(
+            'Une erreur est survenue lors de la suppression de l’ancienne image',
+          );
         }
       }
 
@@ -306,8 +350,7 @@ export class CategoriesService {
     } catch (error) {
       // Si la BDD échoue mais qu'on avait déjà écrit la nouvelle image, on l'annule
       if (newRelativePath) {
-        const tempPath = path.join(process.cwd(), newRelativePath);
-        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        this.unlinkCategoryImage(newRelativePath);
       }
 
       console.error(error);
@@ -329,17 +372,16 @@ export class CategoriesService {
 
       // 3. Si la catégorie avait une image, on la supprime du disque
       if (category.image) {
-        const fullPath = path.join(process.cwd(), category.image);
+        try {
+          const isSafePath = this.unlinkCategoryImage(category.image);
 
-        // On vérifie si le fichier existe avant de tenter de le supprimer
-        if (fs.existsSync(fullPath)) {
-          try {
-            fs.unlinkSync(fullPath);
-          } catch (fileError) {
-            return ApiResponse.error(
-              'Une erreur est survenue lors de la suppression de l’image',
-            );
+          if (!isSafePath) {
+            return ApiResponse.error('Chemin d’image invalide');
           }
+        } catch (fileError) {
+          return ApiResponse.error(
+            'Une erreur est survenue lors de la suppression de l’image',
+          );
         }
       }
 

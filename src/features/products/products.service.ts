@@ -14,11 +14,49 @@ import * as path from 'path';
 import { ImageDto } from 'src/shared/dto';
 @Injectable()
 export class ProductsService {
+  private readonly productStorageDir = path.resolve(
+    process.cwd(),
+    'storage/products',
+  );
+  private readonly productStorageRelativeDir = path.join('storage', 'products');
+  private readonly productImageFileNamePattern =
+    /^prod-\d+-\d+\.(?:jpe?g|png|webp)$/i;
+
   constructor(
     @InjectModel(Product.name) private productModel: Model<Product>,
     private readonly sharedService: SharedService,
     private readonly servicesService: ServicesService,
   ) {}
+
+  private resolveProductImagePath(imagePath: string): string | null {
+    const normalizedPath = path.normalize(imagePath);
+    const fileName = path.basename(normalizedPath);
+
+    if (
+      path.isAbsolute(normalizedPath) ||
+      path.dirname(normalizedPath) !== this.productStorageRelativeDir ||
+      !this.productImageFileNamePattern.test(fileName)
+    ) {
+      return null;
+    }
+
+    return path.join(this.productStorageDir, fileName);
+  }
+
+  private unlinkProductImage(imagePath: string): boolean {
+    const fullPath = this.resolveProductImagePath(imagePath);
+
+    if (!fullPath) {
+      return false;
+    }
+
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+
+    return true;
+  }
+
   async create(
     createProductDto: CreateProductDto,
     files: Express.Multer.File[],
@@ -97,9 +135,7 @@ export class ProductsService {
     } catch (error) {
       // ROLLBACK : On supprime toutes les images si une erreur survient
       for (const fullPath of savedFiles) {
-        if (fs.existsSync(fullPath)) {
-          fs.unlinkSync(fullPath);
-        }
+        this.unlinkProductImage(fullPath);
       }
 
       console.error(error);
@@ -303,15 +339,16 @@ export class ProductsService {
         if (existingProduct.images && existingProduct.images.length > 0) {
           for (const oldImg of existingProduct.images) {
             if (keepSet.has(oldImg.url)) continue; // gardée par l'utilisateur
-            const oldPath = path.join(process.cwd(), oldImg.url);
-            if (fs.existsSync(oldPath)) {
-              try {
-                fs.unlinkSync(oldPath);
-              } catch (_e) {
-                console.error(
-                  `Impossible de supprimer l'ancienne image: ${oldPath}`,
-                );
+            try {
+              const isSafePath = this.unlinkProductImage(oldImg.url);
+
+              if (!isSafePath) {
+                return ApiResponse.error('Chemin d’image invalide');
               }
+            } catch (_e) {
+              console.error(
+                `Impossible de supprimer l'ancienne image: ${oldImg.url}`,
+              );
             }
           }
         }
@@ -378,7 +415,7 @@ export class ProductsService {
     } catch (error) {
       // ROLLBACK : On supprime les nouvelles images si la BDD échoue
       for (const fullPath of newSavedFiles) {
-        if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+        this.unlinkProductImage(fullPath);
       }
       console.error(error);
       return ApiResponse.error('Erreur lors de la mise à jour du produit');
@@ -396,20 +433,19 @@ export class ProductsService {
       // 2. Nettoyage des images sur le disque
       if (product.images && product.images.length > 0) {
         for (const img of product.images) {
-          // Utilisation de path.resolve pour garantir un chemin absolu correct
-          const filePath = path.resolve(process.cwd(), img.url);
+          try {
+            const isSafePath = this.unlinkProductImage(img.url);
 
-          if (fs.existsSync(filePath)) {
-            try {
-              fs.unlinkSync(filePath);
-            } catch (fileError) {
-              // On log l'erreur mais on ne bloque pas la réponse client
-              // car le produit est déjà supprimé en base de données.
-              console.error(
-                `Erreur lors de la suppression physique : ${filePath}`,
-                fileError,
-              );
+            if (!isSafePath) {
+              return ApiResponse.error('Chemin d’image invalide');
             }
+          } catch (fileError) {
+            // On log l'erreur mais on ne bloque pas la réponse client
+            // car le produit est déjà supprimé en base de données.
+            console.error(
+              `Erreur lors de la suppression physique : ${img.url}`,
+              fileError,
+            );
           }
         }
       }

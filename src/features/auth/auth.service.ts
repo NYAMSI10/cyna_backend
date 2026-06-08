@@ -159,7 +159,7 @@ export class AuthService {
       );
     }
   }
-  async forgotPassword(currentEmail) {
+  async forgotPassword(currentEmail: string) {
     try {
       // une fois que j'ai email je verife s'il existe.
       const currentUser = await this.userModel.findOne(

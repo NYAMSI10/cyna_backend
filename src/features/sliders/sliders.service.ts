@@ -11,9 +11,47 @@ import * as path from 'path';
 
 @Injectable()
 export class SlidersService {
+  private readonly sliderStorageDir = path.resolve(
+    process.cwd(),
+    'storage/sliders',
+  );
+  private readonly sliderStorageRelativeDir = path.join('storage', 'sliders');
+  private readonly sliderImageFileNamePattern =
+    /^slider-\d+-\d+\.(?:jpe?g|png|webp)$/i;
+
   constructor(
     @InjectModel(Slider.name) private readonly sliderModel: Model<Slider>,
   ) {}
+
+  private resolveSliderImagePath(imagePath: string): string | null {
+    const normalizedPath = path.normalize(imagePath);
+    const fileName = path.basename(normalizedPath);
+
+    if (
+      path.isAbsolute(normalizedPath) ||
+      path.dirname(normalizedPath) !== this.sliderStorageRelativeDir ||
+      !this.sliderImageFileNamePattern.test(fileName)
+    ) {
+      return null;
+    }
+
+    return path.join(this.sliderStorageDir, fileName);
+  }
+
+  private unlinkSliderImage(imagePath: string): boolean {
+    const fullPath = this.resolveSliderImagePath(imagePath);
+
+    if (!fullPath) {
+      return false;
+    }
+
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+
+    return true;
+  }
+
   async create(
     createSliderDto: CreateSliderDto,
     files: { newImage?: Express.Multer.File[] },
@@ -58,8 +96,8 @@ export class SlidersService {
 
       return ApiResponse.success('Slider créé avec succès', savedSlider);
     } catch (error) {
-      if (fullPath && fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
+      if (fullPath) {
+        this.unlinkSliderImage(fullPath);
       }
       return ApiResponse.error('Erreur lors de la création du slider');
     }
@@ -164,9 +202,16 @@ export class SlidersService {
 
       // La suite de votre logique pour l'image...
       if (file && oldImagePath) {
-        const oldFullRootPath = path.join(process.cwd(), oldImagePath);
-        if (fs.existsSync(oldFullRootPath)) {
-          fs.unlinkSync(oldFullRootPath);
+        try {
+          const isSafePath = this.unlinkSliderImage(oldImagePath);
+
+          if (!isSafePath) {
+            return ApiResponse.error('Chemin d’image invalide');
+          }
+        } catch (fileError) {
+          return ApiResponse.error(
+            'Erreur lors de la suppression de l’ancienne image.',
+          );
         }
       }
 
@@ -176,8 +221,7 @@ export class SlidersService {
       );
     } catch (error) {
       if (newRelativePath) {
-        const tempPath = path.join(process.cwd(), newRelativePath);
-        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        this.unlinkSliderImage(newRelativePath);
       }
       return ApiResponse.error('Erreur lors de la mise à jour');
     }
@@ -193,15 +237,14 @@ export class SlidersService {
       await this.sliderModel.findByIdAndDelete(idSlider);
       // 2. Suppression du fichier physique
       if (slider.image) {
-        const fullPath = path.join(process.cwd(), slider.image);
-        if (fs.existsSync(fullPath)) {
-          try {
-            fs.unlinkSync(fullPath);
-          } catch (fileError) {
-            return ApiResponse.error(
-              'Erreur lors de la suppression du slider.',
-            );
+        try {
+          const isSafePath = this.unlinkSliderImage(slider.image);
+
+          if (!isSafePath) {
+            return ApiResponse.error('Chemin d’image invalide');
           }
+        } catch (fileError) {
+          return ApiResponse.error('Erreur lors de la suppression du slider.');
         }
       }
       return ApiResponse.success('Slider supprimé avec succès.');

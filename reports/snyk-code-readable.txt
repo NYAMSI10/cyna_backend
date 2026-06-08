@@ -1,0 +1,49 @@
+
+Testing /Users/vanelebricenyamsimenyin/Ingetis/Projet_fil_rouge/cyna_backend ...
+
+Open Issues
+
+ ✗ [HIGH] Path Traversal
+   Finding ID: fd4696f1-405c-4932-a80a-d7d280b180b3
+   Path: src/features/categories/categories.controller.ts, line 115
+   Info: Unsanitized input from an HTTP parameter flows into fs.unlinkSync, where it is used as a path. This may result in a Path Traversal vulnerability and allow an attacker to delete arbitrary files.
+
+ ✗ [HIGH] Path Traversal
+   Finding ID: 48f5ab19-ab56-467e-94ea-fa7726dc3a87
+   Path: src/features/products/products.controller.ts, line 111
+   Info: Unsanitized input from an HTTP parameter flows into fs.unlinkSync, where it is used as a path. This may result in a Path Traversal vulnerability and allow an attacker to delete arbitrary files.
+
+ ✗ [HIGH] Path Traversal
+   Finding ID: 03f6a1e1-4fd0-4b80-af40-5d19a08509ab
+   Path: src/features/sliders/sliders.controller.ts, line 101
+   Info: Unsanitized input from an HTTP parameter flows into fs.unlinkSync, where it is used as a path. This may result in a Path Traversal vulnerability and allow an attacker to delete arbitrary files.
+
+ ✗ [HIGH] Cross-site Scripting (XSS)
+   Finding ID: 61090443-c5b9-4c28-a3d9-05021ee7877e
+   Path: src/features/auth/auth.controller.ts, line 56
+   Info: Unsanitized input from an HTTP parameter flows into html, where it is used to render an HTML page returned to the user. This may result in a Cross-Site Scripting attack (XSS).
+
+ ✗ [HIGH] Cross-site Scripting (XSS)
+   Finding ID: 84a78275-0b00-4b78-a547-4828a033d5a9
+   Path: src/features/auth/auth.controller.ts, line 82
+   Info: Unsanitized input from an HTTP parameter flows into html, where it is used to render an HTML page returned to the user. This may result in a Cross-Site Scripting attack (XSS).
+
+
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Test Summary                                                                                 │
+│                                                                                              │
+│   Organization:      nyamsi10                                                                │
+│   Test type:         Static code analysis                                                    │
+│   Project path:      /Users/vanelebricenyamsimenyin/Ingetis/Projet_fil_rouge/cyna_backend    │
+│                                                                                              │
+│   Total issues:   5                                                                          │
+│   Ignored issues: 0 [ 0 HIGH  0 MEDIUM  0 LOW ]                                              │
+│   Open issues:    5 [ 5 HIGH  0 MEDIUM  0 LOW ]                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+    
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+

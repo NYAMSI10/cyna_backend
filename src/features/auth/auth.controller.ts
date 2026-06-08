@@ -10,7 +10,12 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  RegisterDto,
+} from './dto/auth.dto';
 import { CurrentUser } from 'src/shared/decorators/current-user.decorators';
 import { AuthGuard } from 'src/shared/guards/auth.guard';
 import { User } from '../users/entities/user.entity';
@@ -77,9 +82,10 @@ export class AuthController {
   })
   @UseInterceptors(NoFilesInterceptor())
   resetforgotPassword(
-    @Body(FormDataTransformPipe, ValidationPipe) email: string,
+    @Body(FormDataTransformPipe, ValidationPipe)
+    forgotPasswordDto: ForgotPasswordDto,
   ) {
-    return this.authService.forgotPassword(email);
+    return this.authService.forgotPassword(forgotPasswordDto.email);
   }
   @Post('change-password')
   @ApiBody({
@@ -94,8 +100,9 @@ export class AuthController {
   @UseInterceptors(NoFilesInterceptor())
   changePassword(
     @Query('token') token: string,
-    @Body(FormDataTransformPipe, ValidationPipe) password: string,
+    @Body(FormDataTransformPipe, ValidationPipe)
+    changePasswordDto: ChangePasswordDto,
   ) {
-    return this.authService.resetPassword(token, password);
+    return this.authService.resetPassword(token, changePasswordDto.password);
   }
 }
