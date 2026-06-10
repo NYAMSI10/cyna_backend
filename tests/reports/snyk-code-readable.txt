@@ -1,0 +1,19 @@
+
+Testing /Users/namory/Desktop/Ingetis/cyna_backend/tests ...
+
+
+╭──────────────────────────────────────────────────────────────────────────╮
+│ Test Summary                                                             │
+│                                                                          │
+│   Organization:      namory58                                            │
+│   Test type:         Static code analysis                                │
+│   Project path:      /Users/namory/Desktop/Ingetis/cyna_backend/tests    │
+│                                                                          │
+│   Total issues:   0                                                      │
+╰──────────────────────────────────────────────────────────────────────────╯
+    
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+

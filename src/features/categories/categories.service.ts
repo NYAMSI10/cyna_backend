@@ -314,12 +314,9 @@ export class CategoriesService {
       return ApiResponse.error('Erreur lors de la mise à jour');
     }
   }
-
   async remove(slug: string) {
     try {
-      // 1. On récupère d'abord la catégorie pour avoir le chemin de l'image
       const category = await this.categoryModel.findOne({ slug });
-
       if (!category) {
         return ApiResponse.error('Catégorie non trouvée');
       }

