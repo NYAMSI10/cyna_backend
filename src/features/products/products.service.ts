@@ -114,6 +114,7 @@ export class ProductsService {
           path: 'service',
           match: { category: new Types.ObjectId(categoryId) },
           select: 'name slug',
+          populate: { path: 'category', select: 'name slug' },
         })
         .exec();
 
