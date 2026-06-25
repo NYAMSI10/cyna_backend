@@ -1,98 +1,157 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Cyna Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST de la plateforme SaaS de cybersécurité **Cyna**. Construite avec NestJS, MongoDB et Mongoose.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Stack technique
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Outil | Version | Rôle |
+| --- | --- | --- |
+| NestJS | 11.x | Framework Node.js (modules, DI, pipes…) |
+| TypeScript | 5.x | Typage statique |
+| MongoDB | 7.x | Base de données NoSQL |
+| Mongoose | 9.x | ODM MongoDB |
+| JWT | 11.x | Authentification (access token) |
+| Stripe | 22.x | Paiements en ligne |
+| Nodemailer | 7.x | Envoi d'emails transactionnels |
+| Swagger | 11.x | Documentation API auto-générée |
+| Bcrypt | 6.x | Hachage des mots de passe |
+| Class-validator | 0.14 | Validation des DTOs |
 
-## Project setup
+---
 
-```bash
-$ npm install
-```
+## Prérequis
 
-## Compile and run the project
+- **Node.js** ≥ 18.x
+- **npm** ≥ 9.x (inclus avec Node)
+- **MongoDB** démarré localement **ou** via Docker (voir section Docker)
+
+---
+
+## Installation
 
 ```bash
-# development
-$ npm run start
+# 1. Se placer dans le dossier backend
+cd cyna_backend
 
-# watch mode
-$ npm run start:dev
+# 2. Installer les dépendances
+npm install
 
-# production mode
-$ npm run start:prod
+# 3. Copier et renseigner les variables d'environnement
+cp .env.example .env
 ```
 
-## Run tests
+---
+
+## Lancer en développement
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev
 ```
 
-## Deployment
+L'API est accessible sur <http://localhost:3000/api>.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+La documentation Swagger est disponible sur <http://localhost:3000/api/docs>.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+---
+
+## Commandes disponibles
+
+| Commande | Description |
+| --- | --- |
+| `npm run start:dev` | Démarre le serveur en mode watch (rechargement automatique) |
+| `npm run start:prod` | Démarre le serveur en mode production |
+| `npm run build` | Compile le TypeScript dans `dist/` |
+| `npm run lint` | Analyse le code avec ESLint |
+| `npm run test` | Lance les tests unitaires |
+| `npm run test:cov` | Lance les tests avec rapport de couverture |
+| `npm run test:e2e` | Lance les tests end-to-end |
+
+---
+
+## Variables d'environnement
+
+Copier `.env.example` en `.env` et renseigner les valeurs :
+
+```env
+PORT=3000
+API_PORT=3000
+
+DATABASE_PASSWORD=change_me
+DATABASE_URL=mongodb://root:change_me@mongo:27017/cyna?authSource=admin
+
+ACCESS_TOKEN_SECRET_KEY=change_me
+ACCESS_TOKEN_EXPIRE_TIME=1d
+
+APP_BASE_URL=http://localhost:3000
+
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USER=your_email@example.com
+MAIL_PASSWORD=change_me
+
+STRIPE_SECRET_KEY=sk_test_change_me
+STRIPE_WEBHOOK_SECRET=whsec_change_me
+```
+
+| Variable | Usage | Obligatoire |
+| --- | --- | --- |
+| `DATABASE_URL` | URI de connexion MongoDB | Oui |
+| `ACCESS_TOKEN_SECRET_KEY` | Signature des JWT | Oui |
+| `STRIPE_SECRET_KEY` | API Stripe | Oui (prod) |
+| `MAIL_HOST` / `MAIL_PASSWORD` | Envoi d'emails | Oui (prod) |
+
+---
+
+## Structure du projet
+
+```text
+cyna_backend/
+├── src/
+│   ├── features/               # Modules métier
+│   │   ├── auth/               # Authentification (register, login, JWT)
+│   │   ├── users/              # Gestion des utilisateurs
+│   │   ├── products/           # Produits cybersécurité
+│   │   ├── categories/         # Catégories de produits
+│   │   ├── services/           # Services associés aux produits
+│   │   ├── commandes/          # Commandes et abonnements
+│   │   ├── carte_bancaires/    # Cartes bancaires (Stripe)
+│   │   ├── adresse_facturations/ # Adresses de facturation
+│   │   ├── sliders/            # Sliders de la page d'accueil
+│   │   ├── contact/            # Formulaire de contact
+│   │   └── search/             # Recherche globale
+│   ├── shared/                 # Guards, décorateurs, utilitaires partagés
+│   ├── stripe/                 # Module Stripe (webhooks, paiements)
+│   ├── app.module.ts           # Module racine
+│   └── main.ts                 # Point d'entrée (bootstrap NestJS)
+├── storage/                    # Fichiers uploadés (images produits, catégories…)
+├── Dockerfile                  # Build multi-stage (Node 22)
+├── docker-compose.yml          # Stack complète (api + MongoDB)
+├── .env.example                # Modèle de variables d'environnement
+└── nest-cli.json
+```
+
+---
+
+## Déploiement avec Docker
+
+Un `Dockerfile` multi-stage est fourni. Il compile le TypeScript puis produit une image de production légère avec uniquement les dépendances nécessaires.
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Build de l'image
+docker build -t cyna-backend:latest .
+
+# Lancer la stack complète (API + MongoDB)
+docker compose up -d --build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+L'API sera accessible sur <http://localhost:3000/api>.
 
-## Resources
+La documentation Swagger sera accessible sur <http://localhost:3000/api/docs>.
 
-Check out a few resources that may come in handy when working with NestJS:
+Pour exporter l'image (livraison) :
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```bash
+docker save cyna-backend:latest -o cyna-backend.tar
+```
