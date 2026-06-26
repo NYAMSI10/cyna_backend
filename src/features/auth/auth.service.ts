@@ -72,7 +72,7 @@ export class AuthService {
     return ApiResponse.success('Code validé avec succès');
   }
 
-  async register(registerDto: RegisterDto) {
+async register(registerDto: RegisterDto) {
     try {
       const user = await this.userModel
         .findOne({ email: registerDto.email })
@@ -90,7 +90,7 @@ export class AuthService {
         );
       }
 
-      const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+      const hashedPassword = await bcrypt.hash(registerDto.password, 8);
 
       const newUser = new this.userModel({
         firstName: registerDto.firstName,
@@ -105,18 +105,22 @@ export class AuthService {
       const tokenConfirmedEmail =
         this.sharedService.tokenConfirmedEmail(savedUser);
 
-      await this.sendEmailService.confirmedEmail(
-        registerDto.email,
-        tokenConfirmedEmail,
-      );
+      // 🔥 AJOUT : On vérifie si les emails sont activés avant de l'envoyer
+      if (process.env.DISABLE_EMAIL !== 'true') {
+        this.sendEmailService.confirmedEmail(
+          registerDto.email,
+          tokenConfirmedEmail,
+        );
+      } else {
+        console.log(`[DEBUG - k6] Envoi d'email ignoré pour : ${registerDto.email}`);
+      }
 
       return ApiResponse.success(
         'Inscription réussie, vérifiez votre email pour confirmer votre compte',
       );
     } catch (error: any) {
-      // ← Ajoute ça
       return ApiResponse.error(
-        'Une erreur est survenue lors de la connexion' + error.message,
+        'Une erreur est survenue lors de l’inscription : ' + error.message,
       );
     }
   }
