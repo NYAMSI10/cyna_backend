@@ -1,3 +1,4 @@
+import { authenticator } from 'otplib';
 import { ConsoleLogger, Injectable } from '@nestjs/common';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -13,9 +14,13 @@ import { StringValue } from 'ms';
 import { Console } from 'console';
 import { UserRoles } from 'src/shared/common/user-roles.enum';
 import { console } from 'inspector/promises';
+import { TwoFactorMethod } from 'src/shared/common/two-factor-method.enum';
+import { AuditService } from '../audit/audit.service';
+import * as QRCode from 'qrcode';
 
 config();
-
+// Tolère ±30s de décalage d'horloge entre le serveur et l'appareil.
+authenticator.options = { window: 1 };
 @Injectable()
 export class AuthService {
   constructor(
@@ -23,6 +28,7 @@ export class AuthService {
     private readonly sharedService: SharedService,
     private readonly sendEmailService: SendEmailService,
     private jwtService: JwtService,
+    private readonly auditService: AuditService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -31,10 +37,10 @@ export class AuthService {
         .findOne({ email: loginDto.email })
         .exec();
 
+      // Message identique que le compte existe ou non : empêche
+      // l'énumération des adresses e-mail inscrites.
       if (!user) {
-        return ApiResponse.error(
-          "Vous n'avez pas de compte sur notre plateforme, veuillez vous inscrire",
-        );
+        return ApiResponse.error('Adresse e-mail ou mot de passe incorrect');
       }
 
       const matchPassword = await bcrypt.compare(
@@ -43,14 +49,40 @@ export class AuthService {
       );
 
       if (!matchPassword) {
-        return ApiResponse.error('Votre mot de passe est incorrect');
+        return ApiResponse.error('Adresse e-mail ou mot de passe incorrect');
       }
-      if (UserRoles.ADMIN?.includes(user.role)) {
-        //envoie un code d'identifiactions à 6 chiffres:
-        const userEmail = user.email;
+
+      // Compte suspendu par un administrateur : connexion refusée.
+      if (user.isActive === false) {
+        return ApiResponse.error(
+          'Votre compte a été suspendu. Veuillez contacter le support.',
+        );
+      }
+
+      // Adresse e-mail non confirmée : connexion refusée.
+      if (!user.confirmed) {
+        return ApiResponse.error(
+          'Veuillez confirmer votre adresse e-mail avant de vous connecter.',
+        );
+      }
+
+      // Traçabilité : connexion réussie (vérification des identifiants).
+      await this.auditService.record({
+        action: 'user.login',
+        actorId: user._id.toString(),
+        actorEmail: user.email,
+      });
+      // 2FA par utilisateur. Pour la méthode EMAIL on envoie un code à 6 chiffres.
+      // Pour TOTP (Google Authenticator) l'utilisateur a déjà son code dans l'app.
+      const twoFactorMethod = user.twoFactorMethod ?? TwoFactorMethod.NONE;
+      const needs2FA =
+        twoFactorMethod === TwoFactorMethod.EMAIL ||
+        twoFactorMethod === TwoFactorMethod.TOTP;
+
+      if (twoFactorMethod === TwoFactorMethod.EMAIL) {
         const code = this.sharedService.generateSixDigitCode();
         await this.userModel.findOneAndUpdate(
-          { email: userEmail },
+          { email: user.email },
           {
             verification: {
               code,
@@ -58,31 +90,209 @@ export class AuthService {
             },
           },
         );
-        await this.sendEmailService.sendVerificationCode(userEmail, code);
+        await this.sendEmailService.sendVerificationCode(user.email, code);
       }
-      const token = this.sharedService.accessToken(user);
+
+      // Si la 2FA est active, on ne delivre qu'un jeton "pre-auth" : il sert
+      // uniquement a l'etape de verification du code (check-code / totp/verify)
+      // et est refuse partout ailleurs. Le jeton complet n'est emis qu'apres
+      // validation du second facteur. Empeche tout contournement de la 2FA.
+      const token = this.sharedService.accessToken(user, {
+        twoFactorPending: needs2FA,
+      });
       return ApiResponse.success('Connexion réussie', {
         token,
         role: user.role,
+        twoFactorMethod,
       });
     } catch (error: any) {
-      return ApiResponse.error(
-        'Une erreur est survenue lors de la connexion ' + error.message,
-      );
+      return ApiResponse.error('Une erreur est survenue lors de la connexion');
     }
   }
-  verifyCode2FA(inputCode: string) {
+  // Verifie le code 2FA email. Le code est lu sur le document User en base
+  // (et non en memoire), ce qui rend la verification fiable en serverless et
+  // scopee a l'utilisateur authentifie par le jeton pre-auth. Usage unique :
+  // le code est efface des qu'il est consomme. Un jeton complet est alors emis.
+  async verifyCode2FA(inputCode: string, currentUser: any) {
     if (!inputCode) {
       return ApiResponse.error('Code de confirmation requis');
     }
-    const isValid = this.sharedService.verifyCode(inputCode);
 
-    if (!isValid) {
-      return ApiResponse.error('Code de confirmation incorrect ou expiré');
+    const userId = currentUser?.data?._id;
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      return ApiResponse.error('Utilisateur introuvable');
     }
-    return ApiResponse.success('Code validé avec succès');
+
+    const storedCode = user.verification?.code;
+    const dateExp = user.verification?.dateExp;
+    if (!storedCode || !dateExp) {
+      return ApiResponse.error('Aucun code en attente. Reconnectez-vous.');
+    }
+
+    if (new Date(dateExp).getTime() < Date.now()) {
+      // Code expire : on le purge pour eviter toute reutilisation.
+      user.verification = { code: '', dateExp: '' };
+      await user.save();
+      return ApiResponse.error('Code de confirmation expiré');
+    }
+
+    if (String(inputCode).trim() !== String(storedCode)) {
+      return ApiResponse.error('Code de confirmation incorrect');
+    }
+
+    // Code valide : usage unique → on l'efface, puis on emet le jeton complet.
+    user.verification = { code: '', dateExp: '' };
+    await user.save();
+
+    const token = this.sharedService.accessToken(user);
+    return ApiResponse.success('Code validé avec succès', {
+      token,
+      role: user.role,
+    });
   }
 
+  // ── 2FA management (settings) ───────────────────────────────────────────────
+
+  // Génère un secret TOTP + un QR code à scanner dans Google Authenticator.
+  // Le secret n'est appliqué qu'après vérification d'un code (activateTotp).
+  async setupTotp(currentUser: any) {
+    try {
+      const user = await this.userModel.findById(currentUser?.data?._id);
+      if (!user) {
+        return ApiResponse.error('Utilisateur introuvable');
+      }
+      const secret = authenticator.generateSecret();
+      user.twoFactorSecret = secret;
+      await user.save();
+
+      const otpauthUrl = authenticator.keyuri(user.email, 'Cyna', secret);
+      const qrDataUrl = await QRCode.toDataURL(otpauthUrl);
+
+      return ApiResponse.success('Secret 2FA généré', {
+        otpauthUrl,
+        qrDataUrl,
+        secret,
+      });
+    } catch (error) {
+      return ApiResponse.error('Erreur lors de la génération du secret 2FA');
+    }
+  }
+
+  // Vérifie un code de l'app d'authentification puis active la méthode TOTP.
+  async activateTotp(code: string, currentUser: any) {
+    try {
+      const user = await this.userModel.findById(currentUser?.data?._id);
+      if (!user) {
+        return ApiResponse.error('Utilisateur introuvable');
+      }
+      if (!user.twoFactorSecret) {
+        return ApiResponse.error(
+          'Aucun secret 2FA trouvé. Relancez la configuration.',
+        );
+      }
+      const isValid = authenticator.verify({
+        token: String(code ?? '').trim(),
+        secret: user.twoFactorSecret,
+      });
+      if (!isValid) {
+        return ApiResponse.error(
+          "Code incorrect. Vérifiez votre application d'authentification.",
+        );
+      }
+      user.twoFactorMethod = TwoFactorMethod.TOTP;
+      await user.save();
+      await this.auditService.record({
+        action: 'user.2fa_enabled',
+        actorId: user._id.toString(),
+        actorEmail: user.email,
+        metadata: { method: 'TOTP' },
+      });
+      return ApiResponse.success('Google Authenticator activé avec succès', {
+        twoFactorMethod: TwoFactorMethod.TOTP,
+      });
+    } catch (error) {
+      return ApiResponse.error("Erreur lors de l'activation du 2FA");
+    }
+  }
+
+  // Active le 2FA par email (code envoyé à la connexion).
+  async activateEmail2FA(currentUser: any) {
+    try {
+      const user = await this.userModel.findById(currentUser?.data?._id);
+      if (!user) {
+        return ApiResponse.error('Utilisateur introuvable');
+      }
+      user.twoFactorMethod = TwoFactorMethod.EMAIL;
+      user.twoFactorSecret = undefined;
+      await user.save();
+      await this.auditService.record({
+        action: 'user.2fa_enabled',
+        actorId: user._id.toString(),
+        actorEmail: user.email,
+        metadata: { method: 'EMAIL' },
+      });
+      return ApiResponse.success('2FA par email activé avec succès', {
+        twoFactorMethod: TwoFactorMethod.EMAIL,
+      });
+    } catch (error) {
+      return ApiResponse.error("Erreur lors de l'activation du 2FA email");
+    }
+  }
+
+  // Désactive le 2FA (mot de passe requis).
+  async disable2FA(password: string, currentUser: any) {
+    try {
+      const user = await this.userModel.findById(currentUser?.data?._id);
+      if (!user) {
+        return ApiResponse.error('Utilisateur introuvable');
+      }
+      const ok = await bcrypt.compare(password ?? '', user.password);
+      if (!ok) {
+        return ApiResponse.error('Mot de passe incorrect');
+      }
+      user.twoFactorMethod = TwoFactorMethod.NONE;
+      user.twoFactorSecret = undefined;
+      await user.save();
+      await this.auditService.record({
+        action: 'user.2fa_disabled',
+        actorId: user._id.toString(),
+        actorEmail: user.email,
+      });
+      return ApiResponse.success('2FA désactivé avec succès', {
+        twoFactorMethod: TwoFactorMethod.NONE,
+      });
+    } catch (error) {
+      return ApiResponse.error('Erreur lors de la désactivation du 2FA');
+    }
+  }
+
+  // Vérifie un code TOTP lors de l'étape 2FA de connexion (utilisateur déjà loggé).
+  async verifyTotpLogin(code: string, currentUser: any) {
+    try {
+      const user = await this.userModel.findById(currentUser?.data?._id);
+      if (!user?.twoFactorSecret) {
+        return ApiResponse.error(
+          "L'authentification à deux facteurs n'est pas configurée",
+        );
+      }
+      const isValid = authenticator.verify({
+        token: String(code ?? '').trim(),
+        secret: user.twoFactorSecret,
+      });
+      if (!isValid) {
+        return ApiResponse.error('Code incorrect ou expiré');
+      }
+      // Second facteur valide : on remplace le jeton pre-auth par un jeton complet.
+      const token = this.sharedService.accessToken(user);
+      return ApiResponse.success('Code validé avec succès', {
+        token,
+        role: user.role,
+      });
+    } catch (error) {
+      return ApiResponse.error('Erreur lors de la vérification du code');
+    }
+  }
   async register(registerDto: RegisterDto) {
     try {
       const user = await this.userModel

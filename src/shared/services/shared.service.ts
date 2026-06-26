@@ -55,18 +55,26 @@ export class SharedService {
     return result; // exemple: "a9Zk2P0xQ1"
   }
 
-  accessToken(user: User) {
-    const payload = {
+  accessToken(user: User, options?: { twoFactorPending?: boolean }) {
+    const payload: Record<string, any> = {
       id: user._id.toString(), // ✅ important
       email: user.email,
       role: user.role,
     };
+
+    // Jeton "pre-auth" tant que la 2FA n'est pas validee : il identifie
+    // l'utilisateur pour l'etape 2FA mais est refuse sur les routes protegees
+    // (voir AuthGuard + @Allow2FAPending). Empeche de contourner la 2FA.
+    if (options?.twoFactorPending) {
+      payload.twoFactorPending = true;
+    }
 
     return this.jwtService.sign(payload, {
       secret: process.env.ACCESS_TOKEN_SECRET_KEY!,
       expiresIn: process.env.ACCESS_TOKEN_EXPIRE_TIME as StringValue,
     });
   }
+
   tokenConfirmedEmail(user: User) {
     const payload = {
       id: user._id.toString(), // ✅ important

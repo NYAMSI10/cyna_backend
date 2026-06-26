@@ -13,6 +13,8 @@ import { AdresseFacturationsModule } from './features/adresse_facturations/adres
 import { SearchModule } from './features/search/search.module';
 import { ContactModule } from './features/contact/contact.module';
 import { CommandesModule } from './features/commandes/commandes.module';
+import { CouponsModule } from './features/coupons/coupons.module';
+import { AuditModule } from './features/audit/audit.module';
 
 config();
 @Module({
@@ -29,6 +31,8 @@ config();
     SearchModule,
     ContactModule,
     CommandesModule,
+    CouponsModule,
+    AuditModule,
   ],
   controllers: [],
   providers: [],
