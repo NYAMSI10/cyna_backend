@@ -18,6 +18,7 @@ import {
   AdresseFacturation,
   AdresseFacturationSchema,
 } from '../adresse_facturations/entities/adresse_facturation.entity';
+import { CouponsModule } from '../coupons/coupons.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import {
     UsersModule,
     ProductsModule,
     StripeModule.forRootAsync(),
+    CouponsModule,
   ],
   controllers: [CommandesController],
   providers: [CommandesService, JwtService, SharedService],

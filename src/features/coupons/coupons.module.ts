@@ -13,6 +13,6 @@ import { UsersModule } from '../users/users.module';
   ],
   controllers: [CouponsController],
   providers: [CouponsService, JwtService],
-  exports: [CouponsService],
+  exports: [MongooseModule, CouponsService],
 })
 export class CouponsModule {}

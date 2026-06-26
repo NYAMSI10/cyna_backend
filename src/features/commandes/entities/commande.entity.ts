@@ -6,11 +6,14 @@ import {
   AbonnementSchema,
 } from '../../../shared/model/abonnement.entity';
 import { PeriodeAbonnement } from 'src/shared/common/periode-abonnement.enum';
+import { Coupon } from 'src/features/coupons/entities/coupon.entity';
 
 @Schema({ timestamps: true })
 export class Commande extends Document {
   @Prop({ required: true })
   totalPrice!: number;
+  @Prop({ required: true })
+  totalPriceAfterReduction!: number;
   @Prop({ required: true })
   reference!: string;
   @Prop({ required: true })
@@ -27,6 +30,8 @@ export class Commande extends Document {
   cb!: Types.ObjectId;
   @Prop({ type: Types.ObjectId, ref: 'AdresseFacturation' })
   addresseFacturation!: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Coupon' })
+  coupon!: Coupon;
 }
 
 export const CommandeSchema = SchemaFactory.createForClass(Commande);

@@ -72,39 +72,49 @@ export class AuthService {
         actorId: user._id.toString(),
         actorEmail: user.email,
       });
-      // 2FA par utilisateur. Pour la méthode EMAIL on envoie un code à 6 chiffres.
-      // Pour TOTP (Google Authenticator) l'utilisateur a déjà son code dans l'app.
-      const twoFactorMethod = user.twoFactorMethod ?? TwoFactorMethod.NONE;
-      const needs2FA =
-        twoFactorMethod === TwoFactorMethod.EMAIL ||
-        twoFactorMethod === TwoFactorMethod.TOTP;
 
-      if (twoFactorMethod === TwoFactorMethod.EMAIL) {
-        const code = this.sharedService.generateSixDigitCode();
-        await this.userModel.findOneAndUpdate(
-          { email: user.email },
-          {
-            verification: {
-              code,
-              dateExp: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      if (user.role === UserRoles.ADMIN) {
+        // 2FA par utilisateur. Pour la méthode EMAIL on envoie un code à 6 chiffres.
+        // Pour TOTP (Google Authenticator) l'utilisateur a déjà son code dans l'app.
+        const twoFactorMethod = user.twoFactorMethod ?? TwoFactorMethod.NONE;
+        const needs2FA =
+          twoFactorMethod === TwoFactorMethod.EMAIL ||
+          twoFactorMethod === TwoFactorMethod.TOTP;
+
+        if (twoFactorMethod === TwoFactorMethod.EMAIL) {
+          const code = this.sharedService.generateSixDigitCode();
+          await this.userModel.findOneAndUpdate(
+            { email: user.email },
+            {
+              verification: {
+                code,
+                dateExp: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+              },
             },
-          },
-        );
-        await this.sendEmailService.sendVerificationCode(user.email, code);
-      }
+          );
+          await this.sendEmailService.sendVerificationCode(user.email, code);
+        }
 
-      // Si la 2FA est active, on ne delivre qu'un jeton "pre-auth" : il sert
-      // uniquement a l'etape de verification du code (check-code / totp/verify)
-      // et est refuse partout ailleurs. Le jeton complet n'est emis qu'apres
-      // validation du second facteur. Empeche tout contournement de la 2FA.
-      const token = this.sharedService.accessToken(user, {
-        twoFactorPending: needs2FA,
-      });
-      return ApiResponse.success('Connexion réussie', {
-        token,
-        role: user.role,
-        twoFactorMethod,
-      });
+        // Si la 2FA est active, on ne delivre qu'un jeton "pre-auth" : il sert
+        // uniquement a l'etape de verification du code (check-code / totp/verify)
+        // et est refuse partout ailleurs. Le jeton complet n'est emis qu'apres
+        // validation du second facteur. Empeche tout contournement de la 2FA.
+        const token = this.sharedService.accessToken(user, {
+          twoFactorPending: needs2FA,
+        });
+        return ApiResponse.success('Connexion réussie', {
+          token,
+          role: user.role,
+          twoFactorMethod,
+        });
+      } else {
+        // Utilisateur non admin : on delivre directement le jeton complet.
+        const token = this.sharedService.accessToken(user);
+        return ApiResponse.success('Connexion réussie', {
+          token,
+          role: user.role,
+        });
+      }
     } catch (error: any) {
       return ApiResponse.error('Une erreur est survenue lors de la connexion');
     }

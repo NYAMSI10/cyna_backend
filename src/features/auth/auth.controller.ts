@@ -50,11 +50,11 @@ function clearAuthCookie(res: any): void {
 @ApiTags('Auth')
 @ApiBearerAuth()
 @Controller('auth/')
-@ApiConsumes('multipart/form-data')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @ApiConsumes('multipart/form-data')
   @UseInterceptors(NoFilesInterceptor())
   login(@Body(FormDataTransformPipe, ValidationPipe) loginDto: LoginDto) {
     return this.authService.login(loginDto);
@@ -110,6 +110,7 @@ export class AuthController {
     return result;
   }
   @Post('register')
+  @ApiConsumes('multipart/form-data')
   @UseInterceptors(NoFilesInterceptor())
   register(
     @Body(FormDataTransformPipe, ValidationPipe) registerDto: RegisterDto,

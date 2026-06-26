@@ -31,4 +31,7 @@ export class CreateCommandeDto {
   @ValidateNested({ each: true })
   @Type(() => AbonnementDto)
   abonnements!: AbonnementDto[];
+  @ApiProperty({ required: false, description: 'Code promo optionnel' })
+  @IsOptional()
+  couponCode?: string;
 }

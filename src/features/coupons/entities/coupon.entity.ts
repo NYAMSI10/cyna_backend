@@ -22,10 +22,10 @@ export class Coupon extends Document {
   active!: boolean;
 
   // Fenêtre de validité (ISO). Optionnelles.
-  @Prop()
+  @Prop({ required: true })
   startsAt?: string;
 
-  @Prop()
+  @Prop({ required: true })
   endsAt?: string;
 
   // Nombre maximum d'utilisations (0 = illimité) et compteur d'usage.

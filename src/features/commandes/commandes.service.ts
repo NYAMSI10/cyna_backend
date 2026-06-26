@@ -17,6 +17,8 @@ import { resolveIdOrThrow } from 'src/shared/generic/resolveId';
 import { ProductsService } from '../products/products.service';
 import { StripeService } from 'src/shared/services/stripe.service';
 import { AdresseFacturation } from '../adresse_facturations/entities/adresse_facturation.entity';
+import { Coupon } from '../coupons/entities/coupon.entity';
+import { CouponsService } from '../coupons/coupons.service';
 
 type BuiltAbonnement = {
   dateDebut: string;
@@ -34,12 +36,14 @@ export class CommandesService {
   constructor(
     @InjectModel(Commande.name) private readonly commandeModel: Model<Commande>,
     @InjectModel(Product.name) private readonly productModel: Model<Product>,
+    @InjectModel(Coupon.name) private readonly couponModel: Model<Coupon>,
     @InjectModel(CarteBancaire.name)
     private readonly carteBancaireModel: Model<CarteBancaire>,
     @InjectModel(AdresseFacturation.name)
     private readonly adresseFacturationModel: Model<AdresseFacturation>,
     private readonly sharedService: SharedService,
     private readonly productService: ProductsService,
+    private readonly couponService: CouponsService,
     private readonly stripeService: StripeService,
   ) {}
 
@@ -48,9 +52,12 @@ export class CommandesService {
       const userId = currentUser?.data?._id;
 
       const carteBancaire = await this.carteBancaireModel.findById(
-        createCommandeDto.cbId,
+        new Types.ObjectId(createCommandeDto.cbId),
         '_id user stripePaymentMethodId stripeCustomerId',
       );
+      const coupon = await this.couponModel
+        .findOne({ code: createCommandeDto.couponCode?.trim() })
+        .exec();
 
       if (!carteBancaire) {
         return ApiResponse.error('Carte bancaire introuvable');
@@ -61,9 +68,12 @@ export class CommandesService {
           'Vous ne pouvez pas utiliser cette carte bancaire',
         );
       }
+      if (!coupon) {
+        return ApiResponse.error('Coupon introuvable');
+      }
 
       const adresseFacturation = await this.adresseFacturationModel.findById(
-        createCommandeDto.adresseFacturationId,
+        new Types.ObjectId(createCommandeDto.adresseFacturationId),
         '_id user',
       );
 
@@ -76,6 +86,7 @@ export class CommandesService {
           'Vous ne pouvez pas utiliser cette adresse de facturation',
         );
       }
+
       const builtAbonnements: BuiltAbonnement[] = [];
       let totalPrice = 0;
       let nbreProducts = 0;
@@ -130,7 +141,8 @@ export class CommandesService {
 
       const commande = new this.commandeModel({
         reference: this.sharedService.generateReference(),
-        totalPrice,
+        totalPrice: totalPrice,
+        totalPriceAfterReduction: totalPrice - coupon?.value,
         nbreProducts,
         statut: StatutCommande.PENDING,
         cb: new Types.ObjectId(createCommandeDto.cbId),
@@ -140,9 +152,12 @@ export class CommandesService {
         user: new Types.ObjectId(userId),
         periode: builtAbonnements[0].periode,
         abonnements: builtAbonnements,
+        coupon: coupon ? new Types.ObjectId(coupon._id) : null,
       });
       const savedCommande = await commande.save();
-
+      if (createCommandeDto.couponCode) {
+        await this.couponService.incrementUsage(createCommandeDto.couponCode);
+      }
       const populatedCommande = await this.commandeModel
         .findById(savedCommande._id, '_id')
         .exec();
@@ -746,64 +761,6 @@ export class CommandesService {
 
     endDate.setMonth(endDate.getMonth() + 1);
     return endDate;
-  }
-
-  private async buildStripeLineItems(createCommandeDto: CreateCommandeDto) {
-    const lineItems: {
-      stripePriceId?: string;
-      quantity: number;
-      productName?: string;
-      unitAmount?: number;
-      interval?: 'month' | 'year';
-    }[] = [];
-    const intervals = new Set<'month' | 'year'>();
-
-    for (const abonnementDto of createCommandeDto.abonnements) {
-      const ProductIdAsObjectId = await resolveIdOrThrow(
-        abonnementDto.productId,
-        (id) => this.productService.findOneById(id),
-        'Produit',
-      );
-      const product = await this.productModel.findById(
-        ProductIdAsObjectId,
-        '_id name priceMonth priceYear stripePriceMonthId stripePriceYearId',
-      );
-
-      if (!product) {
-        throw new Error(`Produit introuvable: ${abonnementDto.productId}`);
-      }
-
-      const stripePriceId =
-        abonnementDto.periode === PeriodeAbonnement.ANNUEL
-          ? product.stripePriceYearId
-          : product.stripePriceMonthId;
-
-      const unitPrice =
-        abonnementDto.periode === PeriodeAbonnement.ANNUEL
-          ? Number(product.priceYear ?? 0)
-          : Number(product.priceMonth ?? 0);
-
-      lineItems.push({
-        stripePriceId,
-        quantity: Number(abonnementDto.quantity ?? 1),
-        productName: product.name,
-        unitAmount: Math.round(unitPrice * 100),
-        interval:
-          abonnementDto.periode === PeriodeAbonnement.ANNUEL ? 'year' : 'month',
-      });
-
-      intervals.add(
-        abonnementDto.periode === PeriodeAbonnement.ANNUEL ? 'year' : 'month',
-      );
-    }
-
-    if (intervals.size > 1) {
-      throw new Error(
-        'Stripe Checkout ne supporte pas plusieurs abonnements avec des periodes differentes dans une meme session. Envoie uniquement des produits mensuels ou uniquement des produits annuels.',
-      );
-    }
-
-    return lineItems;
   }
 
   private extractId(value: unknown) {
