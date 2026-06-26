@@ -19,6 +19,7 @@ import { FormDataTransformPipe } from 'src/shared/pipes/formdata-transform.pipe'
 import { NoFilesInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { Allow2FAPending } from 'src/shared/decorators/allow-2fa-pending.decorator';
+import { ApiResponse } from 'src/shared/responses/api-response';
 // Durée de vie du cookie JWT (7 jours, en ms).
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
@@ -109,6 +110,50 @@ export class AuthController {
     }
     return result;
   }
+  // ── 2FA management (utilisateur connecté) ──
+  @UseGuards(AuthGuard)
+  @Post('2fa/totp/init')
+  setupTotp(@CurrentUser() currentUser: any) {
+    return this.authService.setupTotp(currentUser);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('2fa/totp/activate')
+  activateTotp(@Body('code') code: string, @CurrentUser() currentUser: any) {
+    return this.authService.activateTotp(code, currentUser);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('2fa/email/activate')
+  activateEmail2FA(@CurrentUser() currentUser: any) {
+    return this.authService.activateEmail2FA(currentUser);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('2fa/disable')
+  disable2FA(
+    @Body('password') password: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.authService.disable2FA(password, currentUser);
+  }
+
+  // Étape 2FA de connexion pour la méthode TOTP (jeton pre-auth accepte ici).
+  @UseGuards(AuthGuard)
+  @Allow2FAPending()
+  @Post('2fa/totp/verify')
+  async verifyTotpLogin(
+    @Body('code') code: string,
+    @CurrentUser() currentUser: any,
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const result = await this.authService.verifyTotpLogin(code, currentUser);
+    const token = (result?.data as any)?.token;
+    if (result?.success && token) {
+      setAuthCookie(res, token);
+    }
+    return result;
+  }
   @Post('register')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(NoFilesInterceptor())
@@ -159,5 +204,10 @@ export class AuthController {
     @Body(FormDataTransformPipe, ValidationPipe) password: string,
   ) {
     return this.authService.resetPassword(token, password);
+  }
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {
+    clearAuthCookie(res);
+    return ApiResponse.success('Déconnecté avec succès');
   }
 }
