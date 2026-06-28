@@ -182,6 +182,7 @@ export class AuthController {
       required: ['email'],
     },
   })
+  @ApiConsumes('multipart/form-data')
   @UseInterceptors(NoFilesInterceptor())
   resetforgotPassword(
     @Body(FormDataTransformPipe, ValidationPipe) email: string,
@@ -198,6 +199,7 @@ export class AuthController {
       required: ['password'],
     },
   })
+  @ApiConsumes('multipart/form-data')
   @UseInterceptors(NoFilesInterceptor())
   changePassword(
     @Query('token') token: string,
