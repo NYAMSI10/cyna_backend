@@ -184,10 +184,8 @@ export class AuthController {
   })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(NoFilesInterceptor())
-  resetforgotPassword(
-    @Body(FormDataTransformPipe, ValidationPipe) email: string,
-  ) {
-    return this.authService.forgotPassword(email);
+  resetforgotPassword(@Body(FormDataTransformPipe) body: { email: string }) {
+    return this.authService.forgotPassword(body.email);
   }
   @Post('change-password')
   @ApiBody({
@@ -203,9 +201,9 @@ export class AuthController {
   @UseInterceptors(NoFilesInterceptor())
   changePassword(
     @Query('token') token: string,
-    @Body(FormDataTransformPipe, ValidationPipe) password: string,
+    @Body(FormDataTransformPipe) body: { password: string },
   ) {
-    return this.authService.resetPassword(token, password);
+    return this.authService.resetPassword(token, body.password);
   }
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {

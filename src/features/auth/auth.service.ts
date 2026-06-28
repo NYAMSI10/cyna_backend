@@ -382,6 +382,7 @@ export class AuthService {
   async forgotPassword(currentEmail: string) {
     try {
       // une fois que j'ai email je verife s'il existe.
+
       const currentUser = await this.userModel.findOne(
         { email: currentEmail },
         'email',
@@ -404,7 +405,9 @@ export class AuthService {
       );
     } catch (error: any) {
       console.error('Erreur login:', error); // ← Ajoute ça
-      return ApiResponse.error('Une erreur est survenue lors de la connexion');
+      return ApiResponse.error(
+        'Une erreur est survenue lors de la connexion' + error.message,
+      );
     }
   }
   async resetPassword(token: string, newPassword: string) {
