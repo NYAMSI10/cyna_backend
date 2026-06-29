@@ -57,7 +57,7 @@ export async function createNestApp(
   // Optionnel : middleware pour répondre proprement aux OPTIONS (préflight)
   app.use((req, res, next) => {
     if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Origin', allowedOrigin as string[]);
+      res.header('Access-Control-Allow-Origin', allowedOrigin);
       res.header(
         'Access-Control-Allow-Methods',
         'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
