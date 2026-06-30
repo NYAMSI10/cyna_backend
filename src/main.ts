@@ -30,47 +30,19 @@ export async function createNestApp(
         rawBody: true,
       });
 
-  app.enableCors();
+  app.enableCors({
+    origin: ['http://localhost:5173', 'https://cynaapp.vercel.app'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders:
+      'Content-Type, Authorization, Accept, X-Requested-With, X-Message-Lang',
+    credentials: true,
+  });
+
   // prefix API
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe());
   app.use(bodyParser.json({ limit: '10mb' }));
   app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
-  // === CORS ===
-  // En dev : autorise uniquement le front Angular. En prod, remplace par l'origine réelle ou une fonction.
-  // === CORS ===
-  // En dev : autorise uniquement le front Angular. En prod, remplace par l'origine réelle ou une fonction.
-  const allowedOrigin = [
-    'http://localhost:4200',
-    'http://localhost:5173',
-    'https://cynaapp.vercel.app',
-  ];
-
-  app.enableCors({
-    origin: allowedOrigin,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders:
-      'Content-Type, Authorization, Accept, X-Requested-With, X-Message-Lang',
-    credentials: true, // true si tu utilises cookies/auth basés sur cookie
-  });
-
-  // Optionnel : middleware pour répondre proprement aux OPTIONS (préflight)
-  app.use((req, res, next) => {
-    if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Origin', allowedOrigin);
-      res.header(
-        'Access-Control-Allow-Methods',
-        'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-      );
-      res.header(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, Accept, X-Requested-With, X-Message-Lang',
-      );
-      res.header('Access-Control-Allow-Credentials', 'true');
-      return res.status(204).send('');
-    }
-    next();
-  });
   // === Swagger Configuration ===
   const config = new DocumentBuilder()
     .setTitle('CYNA API')

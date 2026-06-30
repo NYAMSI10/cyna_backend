@@ -7,12 +7,12 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('Search')
 @Controller('search')
 export class SearchController {
-  constructor(private readonly searchService: SearchService) { }
+  constructor(private readonly searchService: SearchService) {}
 
   @Get()
   async search(
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
-    query: CreateSearchDto
+    query: CreateSearchDto,
   ) {
     return this.searchService.advancedSearch(query);
   }

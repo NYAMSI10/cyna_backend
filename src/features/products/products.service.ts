@@ -89,7 +89,9 @@ export class ProductsService {
       }
 
       console.error(error);
-      return ApiResponse.error('Erreur lors de la création du produit');
+      return ApiResponse.error(
+        'Erreur lors de la création du produit' + error.message,
+      );
     }
   }
   async productSimilar(categoryId: string) {

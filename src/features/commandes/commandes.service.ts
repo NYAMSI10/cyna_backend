@@ -68,7 +68,7 @@ export class CommandesService {
           'Vous ne pouvez pas utiliser cette carte bancaire',
         );
       }
-      if (!coupon) {
+      if (createCommandeDto?.couponCode && !coupon) {
         return ApiResponse.error('Coupon introuvable');
       }
 
@@ -142,7 +142,9 @@ export class CommandesService {
       const commande = new this.commandeModel({
         reference: this.sharedService.generateReference(),
         totalPrice: totalPrice,
-        totalPriceAfterReduction: totalPrice - coupon?.value,
+        totalPriceAfterReduction: coupon?.value
+          ? totalPrice - coupon?.value
+          : totalPrice,
         nbreProducts,
         statut: StatutCommande.PENDING,
         cb: new Types.ObjectId(createCommandeDto.cbId),
@@ -167,7 +169,9 @@ export class CommandesService {
         populatedCommande,
       );
     } catch (error) {
-      return ApiResponse.error('Erreur lors de la creation de la commande');
+      return ApiResponse.error(
+        'Erreur lors de la creation de la commande ' + error.message,
+      );
     }
   }
 
